@@ -1,0 +1,26 @@
+# Claude Mode Switching Aliases - Shared via claude-dev-client
+# Note: Variables like REMOTE_SERVER_IP are populated from claude.config
+
+# Local Mode: Points to your GPU Server
+claude-local() {
+    # Check if config variables are available, if not, source them
+    if [ -z "$REMOTE_SERVER_IP" ] && [ -f "$HOME/path/to/repo/claude.config" ]; then
+        # This is a fallback; usually handled by the setup script
+        echo "Loading config..."
+    fi
+
+    export ANTHROPIC_BASE_URL="http://${REMOTE_SERVER_IP}:${REMOTE_SERVER_PORT}"
+    export ANTHROPIC_API_KEY="${LOCAL_API_KEY}"
+    export ANTHROPIC_MODEL="${LOCAL_MODEL_NAME}"
+    echo "✅ Mode: LOCAL (Server: ${REMOTE_SERVER_IP}:${REMOTE_SERVER_PORT})"
+    claude "$@"
+}
+
+# Official Mode: Points to Anthropic Cloud
+claude-official() {
+    unset ANTHROPIC_BASE_URL
+    unset ANTHROPIC_MODEL
+    export ANTHROPIC_API_KEY="${OFFICIAL_API_KEY}"
+    echo "🌐 Mode: OFFICIAL (Anthropic Cloud)"
+    claude "$@"
+}

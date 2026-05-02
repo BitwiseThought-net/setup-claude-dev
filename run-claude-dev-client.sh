@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#export ANTHROPIC_BASE_URL="http://server.lan"
+#export ANTHROPIC_API_KEY="ollama"
+#claude
+#claude --model qwen2.5-coder:14b
+
+#!/bin/bash
+# Load aliases specifically for this runner
+if [ -f "$HOME/.claude_aliases" ]; then
+    source "$HOME/.claude_aliases"
+fi
+
+# Now you can use claude-local safely inside this script
+claude-local
+
+
+
+
+
+
+
+
+
