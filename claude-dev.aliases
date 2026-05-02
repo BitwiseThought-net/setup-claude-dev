@@ -7,9 +7,7 @@ claude-local() {
     export ANTHROPIC_API_KEY="${LOCAL_API_KEY}"
     export ANTHROPIC_MODEL="${LOCAL_MODEL_NAME}"
     echo "✅ Mode: LOCAL (Server: ${REMOTE_SERVER_IP}:${REMOTE_SERVER_PORT})"
-    
-    # We use \$@ so envsubst doesn't overwrite it during installation
-    claude "\$@"
+    claude "$@"
 }
 
 # Official Mode: Points to Anthropic Cloud
@@ -18,7 +16,5 @@ claude-official() {
     unset ANTHROPIC_MODEL
     export ANTHROPIC_API_KEY="${OFFICIAL_API_KEY}"
     echo "🌐 Mode: OFFICIAL (Anthropic Cloud)"
-    
-    # We use \$@ so envsubst doesn't overwrite it during installation
-    claude "\$@"
+    claude "$@"
 }
