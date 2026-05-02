@@ -56,7 +56,7 @@
 3. Edit `claude.config` and set your `REMOTE_SERVER_IP`.
 4. **One-Click Install:** Run the command below to bypass execution policies and run the installer directly:
    ```powershell
-   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://githubusercontent.com'))
+   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/BitwiseThought-net/setup-claude-dev/refs/heads/main/setup-claude-dev-client-gitfree.ps1'))
    ```
 5. Restart your terminal or run: `. $PROFILE`
 
