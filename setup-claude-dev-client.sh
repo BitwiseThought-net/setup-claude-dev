@@ -80,10 +80,16 @@ if ! grep -qF "source $ALIAS_DEST" "$BASHRC"; then
     echo -e "\n# Custom Claude Aliases\nsource $ALIAS_DEST" >> "$BASHRC"
 fi
 
-echo "------------------------------------------------"
+TMP_PATH='export PATH="$HOME/.local/bin:$PATH"'
+if ! grep -q "$TMP_PATH" your_file.txt; then
+    echo "$TMP_PATH" >> ~/.bashrc && source ~/.bashrc
+fi
+
+echo "----------------------------------------------------------------------------"
 echo "✅ Setup Complete!"
-echo "------------------------------------------------"
-echo "1. Run 'source ~/.bashrc'"
+echo "----------------------------------------------------------------------------"
+echo "1. Run 'source ~/.bashrc'. (Only necessary from THIS stale window.)"
 echo "2. Open your project: 'code .'"
 echo "3. Start coding: 'claude-local'"
-echo "------------------------------------------------"
+echo "4. On first run of 'claude-local', confirm 'yes' to use the custom API key."
+echo "----------------------------------------------------------------------------"
