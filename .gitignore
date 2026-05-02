@@ -6,3 +6,6 @@ claude.config
 
 # Ignore OS files
 .DS_Store
+
+# Ignore files
+packages.microsoft.gpg
