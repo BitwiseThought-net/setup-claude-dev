@@ -1,20 +1,18 @@
-# setup-claude-dev-client-gitfree.ps1
+# setup-claude-dev-client.ps1
 
 $ConfigFile = "claude.config"
-$ExampleUrl = "https://raw.githubusercontent.com/BitwiseThought-net/setup-claude-dev/refs/heads/main/claude.config.example"
-$ExtensionUrl = "https://raw.githubusercontent.com/BitwiseThought-net/setup-claude-dev/refs/heads/main/vscode.extensions"
-$ClaudeConfigDir = "$HOME\.claude"
+$ExampleFile = "https://raw.githubusercontent.com/BitwiseThought-net/setup-claude-dev/refs/heads/main/claude.config.example"
 
-# 1. Check for Local Config File
+# 1. Check for Config File
 if (-not (Test-Path $ConfigFile)) {
     Write-Host "❌ Error: $ConfigFile not found!" -ForegroundColor Red
-    Write-Host "-------------------------------------------------------"
+    Write-Host "--------------------------------------------------------------------"
     Write-Host "To fix this, please do the following:"
-    Write-Host "  1. Download the template from: $ExampleUrl"
-    Write-Host "  2. Save it as '$ConfigFile' in this directory."
-    Write-Host "  3. Edit it with your server's IP and settings."
-    Write-Host "  4. Run this script again."
-    Write-Host "-------------------------------------------------------"
+    Write-Host "  1. Download $ExampleFile"
+    Write-Host "  2. Rename claude.config.example to claude.config"
+    Write-Host "  3. Update claude.config with the appropriate values."
+    Write-Host "  4. Run this script again from the same location as claude.config."
+    Write-Host "--------------------------------------------------------------------"
     exit
 }
 
@@ -25,7 +23,7 @@ Get-Content $ConfigFile | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } 
     Set-Variable -Name $name -Value $value -Scope Script
 }
 
-Write-Host "🚀 Starting Git-Free Windows Claude Dev Setup..." -ForegroundColor Cyan
+Write-Host "🚀 Starting Windows Claude Dev Setup..." -ForegroundColor Cyan
 
 # 2. Install VS Code via Winget
 if (-not (Get-Command "code" -ErrorAction SilentlyContinue)) {
@@ -35,26 +33,18 @@ if (-not (Get-Command "code" -ErrorAction SilentlyContinue)) {
     Write-Host "✅ VS Code is already installed."
 }
 
-# 3. Install VS Code Extensions (Pulling remotely)
-Write-Host "🧩 Fetching and Installing VS Code extensions from GitHub..." -ForegroundColor Yellow
-try {
-    $Extensions = Invoke-RestMethod -Uri $ExtensionUrl
-    $Extensions -split "`n" | ForEach-Object {
-        $ext = $_.Trim()
-        if ($ext -and -not $ext.StartsWith("#")) {
-            Write-Host "Installing: $ext"
-            & code --install-extension $ext --force
-        }
-    }
-} catch {
-    Write-Host "⚠️  Failed to fetch extensions from $ExtensionUrl" -ForegroundColor Red
-}
+# 3. Install VS Code Extensions
+code --install-extension anthropic.claude-code --force
+code --install-extension ms-vscode-remote.remote-ssh --force
+code --install-extension ms-python.python --force
 
 # 4. Install Claude Code CLI
 Write-Host "📦 Installing Claude Code CLI..."
-iwr -useb https://claude.ai/install.sh | iex
+# Using the official Windows installer method (via iwr)
+iwr -useb https://claude.ai | iex
 
 # 5. Configure Claude CLI JSON
+$ClaudeConfigDir = "$HOME\.claude"
 if (-not (Test-Path $ClaudeConfigDir)) { New-Item -ItemType Directory -Path $ClaudeConfigDir }
 $ConfigJson = @{
     autoConnectToEditor = $true
