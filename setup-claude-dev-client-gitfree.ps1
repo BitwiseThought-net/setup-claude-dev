@@ -1,8 +1,8 @@
 # setup-claude-dev-client-gitfree.ps1
 
 $ConfigFile = "claude.config"
-$ExampleUrl = "https://raw.githubusercontent.com/BitwiseThought-net/setup-claude-dev/refs/heads/main/claude.config.example"
-$ExtensionUrl = "https://raw.githubusercontent.com/BitwiseThought-net/setup-claude-dev/refs/heads/main/vscode.extensions"
+$ExampleUrl = "https://githubusercontent.com"
+$ExtensionUrl = "https://githubusercontent.com"
 $ClaudeConfigDir = "$HOME\.claude"
 
 # 1. Check for Local Config File
@@ -47,50 +47,54 @@ try {
         }
     }
 } catch {
-    Write-Host "⚠️  Failed to fetch extensions from $ExtensionUrl" -ForegroundColor Red
+    Write-Host "⚠️  Failed to fetch extensions from GitHub" -ForegroundColor Red
 }
 
 # 4. Install Claude Code CLI
 Write-Host "📦 Installing Claude Code CLI..."
-iwr -useb https://claude.ai/install.sh | iex
+iwr -useb https://claude.ai | iex
 
 # 5. Configure Claude CLI JSON
-if (-not (Test-Path $ClaudeConfigDir)) { New-Item -ItemType Directory -Path $ClaudeConfigDir }
+if (-not (Test-Path $ClaudeConfigDir)) { New-Item -ItemType Directory -Path $ClaudeConfigDir -Force }
 $ConfigJson = @{
     autoConnectToEditor = $true
     defaultModel = $LOCAL_MODEL_NAME
     primaryModel = $LOCAL_MODEL_NAME
 } | ConvertTo-Json
-$ConfigJson | Out-File -FilePath "$ClaudeConfigDir\config.json" -Encoding utf8
+$ConfigJson | Out-File -FilePath "$ClaudeConfigDir\config.json" -Encoding utf8 -Force
 
 # 6. Setup PowerShell Profile Aliases
 $ProfileDir = Split-Path $PROFILE
-if (-not (Test-Path $ProfileDir)) { New-Item -ItemType Directory -Path $ProfileDir }
+if (-not (Test-Path $ProfileDir)) { New-Item -ItemType Directory -Path $ProfileDir -Force }
 
-$AliasContent = @"
+# Use a Template with placeholders to avoid ":" variable reference errors
+$AliasTemplate = @'
 
 # --- Claude Dev Aliases ---
 function claude-local {
-    `$env:ANTHROPIC_BASE_URL = "http://$REMOTE_SERVER_IP:$REMOTE_SERVER_PORT"
-    `$env:ANTHROPIC_API_KEY = "$LOCAL_API_KEY"
-    `$env:ANTHROPIC_MODEL = "$LOCAL_MODEL_NAME"
-    Write-Host "✅ Mode: LOCAL (Server: $REMOTE_SERVER_IP)" -ForegroundColor Green
-    claude `$args
+    $env:ANTHROPIC_BASE_URL = "http://{0}:{1}"
+    $env:ANTHROPIC_API_KEY = "{2}"
+    $env:ANTHROPIC_MODEL = "{3}"
+    Write-Host "✅ Mode: LOCAL (Server: {0})" -ForegroundColor Green
+    claude $args
 }
 
 function claude-official {
-    `$env:ANTHROPIC_BASE_URL = `$null
-    `$env:ANTHROPIC_MODEL = `$null
-    `$env:ANTHROPIC_API_KEY = "$OFFICIAL_API_KEY"
+    $env:ANTHROPIC_BASE_URL = $null
+    $env:ANTHROPIC_MODEL = $null
+    $env:ANTHROPIC_API_KEY = "{4}"
     Write-Host "🌐 Mode: OFFICIAL (Anthropic Cloud)" -ForegroundColor Cyan
-    claude `$args
+    claude $args
 }
-"@
+'@
 
-if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE }
+# Safe Injection using the -f (format) operator
+$AliasContent = $AliasTemplate -f $REMOTE_SERVER_IP, $REMOTE_SERVER_PORT, $LOCAL_API_KEY, $LOCAL_MODEL_NAME, $OFFICIAL_API_KEY
+
+if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force }
 if (-not (Select-String -Pattern "claude-local" -Path $PROFILE)) {
     Write-Host "🔗 Adding aliases to PowerShell Profile..."
-    $AliasContent | Out-File -FilePath $PROFILE -Append
+    $AliasContent | Out-File -FilePath $PROFILE -Append -Encoding utf8
 }
 
 Write-Host "------------------------------------------------" -ForegroundColor Green
@@ -99,3 +103,4 @@ Write-Host "------------------------------------------------"
 Write-Host "1. Restart your terminal or run: . `$PROFILE"
 Write-Host "2. Start coding: claude-local"
 Write-Host "------------------------------------------------"
+
