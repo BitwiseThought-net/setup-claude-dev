@@ -8,6 +8,7 @@
 #!/bin/bash
 # Load aliases specifically for this runner
 if [ -f "$HOME/.claude_aliases" ]; then
+    # shellcheck disable=SC1091
     source "$HOME/.claude_aliases"
 fi
 
