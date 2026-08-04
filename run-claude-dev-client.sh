@@ -4,6 +4,7 @@
 #export ANTHROPIC_API_KEY="ollama"
 #claude
 #claude --model qwen2.5-coder:14b
+#claude --model qwen3.6:latest
 
 #!/bin/bash
 # Load aliases specifically for this runner
