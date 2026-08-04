@@ -1,6 +1,6 @@
 # Claude-Local-Dev Client 🚀
 
-**Elevator Pitch:** Run a private, enterprise-grade AI coding assistant on your own hardware for \$0.00. This project automates the orchestration between **Claude Code** and a local **Ollama** server, providing a full VS Code-integrated environment with zero data leakage and zero API costs.
+Run a private, enterprise-grade AI coding assistant on your own hardware for \$0.00. This project automates the orchestration between **Claude Code** and a local **Ollama** server, providing a full VS Code-integrated environment with zero data leakage and zero API costs.
 
 ---
 
