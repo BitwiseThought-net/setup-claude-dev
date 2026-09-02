@@ -25,6 +25,46 @@ Get-Content $ConfigFile | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } 
 
 Write-Host "[*] Starting Windows Claude Dev Setup..." -ForegroundColor Cyan
 
+# Helper: merge updates into a JSON file without clobbering unrelated existing keys
+# (supports one level of nesting, e.g. an "env" sub-object)
+function Set-JsonSettings {
+    param(
+        [Parameter(Mandatory)] [string]$Path,
+        [Parameter(Mandatory)] [hashtable]$Updates
+    )
+
+    $Dir = Split-Path $Path -Parent
+    if ($Dir -and -not (Test-Path $Dir)) { New-Item -ItemType Directory -Path $Dir -Force | Out-Null }
+
+    $existing = @{}
+    if (Test-Path $Path) {
+        $raw = Get-Content $Path -Raw
+        if ($raw -and $raw.Trim()) {
+            try {
+                $parsed = $raw | ConvertFrom-Json
+                foreach ($prop in $parsed.PSObject.Properties) { $existing[$prop.Name] = $prop.Value }
+            } catch {
+                Write-Host "[WARN] $Path has invalid JSON. Backing it up to $Path.bak and starting fresh." -ForegroundColor Yellow
+                Copy-Item $Path "$Path.bak" -Force
+            }
+        }
+    }
+
+    foreach ($key in $Updates.Keys) {
+        $newVal = $Updates[$key]
+        if ($newVal -is [hashtable] -and $existing.ContainsKey($key) -and $existing[$key] -is [System.Management.Automation.PSCustomObject]) {
+            $existingSub = @{}
+            foreach ($prop in $existing[$key].PSObject.Properties) { $existingSub[$prop.Name] = $prop.Value }
+            foreach ($subKey in $newVal.Keys) { $existingSub[$subKey] = $newVal[$subKey] }
+            $existing[$key] = $existingSub
+        } else {
+            $existing[$key] = $newVal
+        }
+    }
+
+    $existing | ConvertTo-Json -Depth 10 | Out-File -FilePath $Path -Encoding utf8
+}
+
 # 2. Install VS Code via Winget
 if (-not (Get-Command "code" -ErrorAction SilentlyContinue)) {
     Write-Host "[*] Installing VS Code..."
@@ -76,6 +116,26 @@ $ConfigJson = @{
     primaryModel = $LOCAL_MODEL_NAME
 } | ConvertTo-Json
 $ConfigJson | Out-File -FilePath "$ClaudeConfigDir\config.json" -Encoding utf8
+
+# 5b. Configure the actual Claude Code settings.json (the file Claude Code reads for env vars)
+Write-Host "[*] Configuring $ClaudeConfigDir\settings.json..."
+$ClaudeSettingsPath = "$ClaudeConfigDir\settings.json"
+Set-JsonSettings -Path $ClaudeSettingsPath -Updates @{
+    env = @{
+        ANTHROPIC_BASE_URL    = "http://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+        ANTHROPIC_AUTH_TOKEN  = $LOCAL_API_KEY
+        LITELLM_PROXY_URL     = "http://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+        LITELLM_PROXY_API_KEY = $LOCAL_API_KEY
+    }
+}
+
+# 5c. Configure VS Code's user settings.json for the Claude Code extension
+$VSCodeSettingsPath = "$env:APPDATA\Code\User\settings.json"
+Write-Host "[*] Configuring $VSCodeSettingsPath..."
+Set-JsonSettings -Path $VSCodeSettingsPath -Updates @{
+    "claudeCode.disableLoginPrompt" = $true
+    "claudeCode.selectedModel"      = $LOCAL_MODEL_NAME
+}
 
 # 6. Setup PowerShell Profile Aliases
 $ProfileDir = Split-Path $PROFILE
