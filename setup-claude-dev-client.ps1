@@ -23,11 +23,20 @@ Get-Content $ConfigFile | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } 
     Set-Variable -Name $name -Value $value -Scope Script
 }
 
-# Default REMOTE_SERVER_PROTOCOL to https (matches the typical local LAN Ollama/LiteLLM setup).
+# Default REMOTE_SERVER_PROTOCOL to http (matches the typical local LAN Ollama/LiteLLM setup).
 # Set REMOTE_SERVER_PROTOCOL=https in claude.config if your server is behind a TLS-terminated
-# reverse proxy - otherwise you may see "HTTPS request was sent to HTTP port" errors.
-if (-not $REMOTE_SERVER_PROTOCOL) { $REMOTE_SERVER_PROTOCOL = "https" }
-$RemoteServerUrl = "${REMOTE_SERVER_PROTOCOL}://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+# reverse proxy - otherwise you'll see "plain HTTP request was sent to HTTPS port" errors.
+if (-not $REMOTE_SERVER_PROTOCOL) { $REMOTE_SERVER_PROTOCOL = "http" }
+
+# Normalize the URL: omit the port when it's the protocol's default (80 for http, 443 for https),
+# since most servers/clients treat "https://host:443" and "https://host" identically, but some
+# strict reverse-proxy configs are picky about an explicitly-specified default port.
+$DefaultPorts = @{ "http" = "80"; "https" = "443" }
+if ($DefaultPorts[$REMOTE_SERVER_PROTOCOL] -eq $REMOTE_SERVER_PORT) {
+    $RemoteServerUrl = "${REMOTE_SERVER_PROTOCOL}://${REMOTE_SERVER_IP}"
+} else {
+    $RemoteServerUrl = "${REMOTE_SERVER_PROTOCOL}://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+}
 
 Write-Host "[*] Starting Windows Claude Dev Setup..." -ForegroundColor Cyan
 
