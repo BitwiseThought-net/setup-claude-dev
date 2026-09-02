@@ -12,4 +12,5 @@ packages.microsoft.gpg
 *.swp
 *.swo
 [._]*.s[a-v][a-z]
+*.bak
 
