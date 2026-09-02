@@ -23,6 +23,12 @@ Get-Content $ConfigFile | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } 
     Set-Variable -Name $name -Value $value -Scope Script
 }
 
+# Default REMOTE_SERVER_PROTOCOL to https (matches the typical local LAN Ollama/LiteLLM setup).
+# Set REMOTE_SERVER_PROTOCOL=https in claude.config if your server is behind a TLS-terminated
+# reverse proxy - otherwise you may see "HTTPS request was sent to HTTP port" errors.
+if (-not $REMOTE_SERVER_PROTOCOL) { $REMOTE_SERVER_PROTOCOL = "https" }
+$RemoteServerUrl = "${REMOTE_SERVER_PROTOCOL}://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+
 Write-Host "[*] Starting Windows Claude Dev Setup..." -ForegroundColor Cyan
 
 # Helper: merge updates into a JSON file without clobbering unrelated existing keys
@@ -122,9 +128,9 @@ Write-Host "[*] Configuring $ClaudeConfigDir\settings.json..."
 $ClaudeSettingsPath = "$ClaudeConfigDir\settings.json"
 Set-JsonSettings -Path $ClaudeSettingsPath -Updates @{
     env = @{
-        ANTHROPIC_BASE_URL    = "http://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+        ANTHROPIC_BASE_URL    = $RemoteServerUrl
         ANTHROPIC_AUTH_TOKEN  = $LOCAL_API_KEY
-        LITELLM_PROXY_URL     = "http://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+        LITELLM_PROXY_URL     = $RemoteServerUrl
         LITELLM_PROXY_API_KEY = $LOCAL_API_KEY
     }
 }
@@ -145,7 +151,7 @@ $AliasContent = @"
 
 # --- Claude Dev Aliases ---
 function claude-local {
-    `$env:ANTHROPIC_BASE_URL = "http://${REMOTE_SERVER_IP}:$REMOTE_SERVER_PORT"
+    `$env:ANTHROPIC_BASE_URL = "$RemoteServerUrl"
     `$env:ANTHROPIC_API_KEY = "$LOCAL_API_KEY"
     `$env:ANTHROPIC_MODEL = "$LOCAL_MODEL_NAME"
     Write-Host "[OK] Mode: LOCAL (Server: $REMOTE_SERVER_IP)" -ForegroundColor Green
