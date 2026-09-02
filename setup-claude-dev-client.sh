@@ -122,8 +122,10 @@ cat <<EOF > "$HOME/.claude/settings.json"
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://${OLLAMA_HOST}:${OLLAMA_PORT}",
-    "ANTHROPIC_AUTH_TOKEN": "ollama",
-    "ANTHROPIC_API_KEY": "${API_KEY}"
+    "ANTHROPIC_AUTH_TOKEN": "${API_KEY}",
+    "ANTHROPIC_API_KEY": "${API_KEY}",
+    "LITELLM_PROXY_URL": "http://${OLLAMA_HOST}:${OLLAMA_PORT}",
+    "LITELLM_PROXY_API_KEY": "${API_KEY}"
   },
   "theme": "auto"
 }

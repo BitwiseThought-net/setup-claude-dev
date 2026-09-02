@@ -1,0 +1,21 @@
+name: Manual Spell Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  spell-check:
+    name: Check Repository Spelling
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Run CSpell
+        uses: streetsidesoftware/cspell-action@v9
+        with:
+          incremental_files_only: false
+          strict: true
+          # Tells the action exactly where your config file lives
+          config: '.github/workflows/cspell.json'
