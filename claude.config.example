@@ -7,7 +7,7 @@ REMOTE_SERVER_PORT="4000"
 # Defaults to "https" if omitted, which matches a typical local-network Ollama/LiteLLM setup.
 # Set to "http" if your server DOES NOT sit behind a TLS-terminated reverse proxy (e.g. nginx),
 # otherwise you may see "plain HTTPS request was sent to HTTP port" errors.
-# REMOTE_SERVER_PROTOCOL="http"
+# REMOTE_SERVER_PROTOCOL="https"
 
 # --- API Keys ---
 # 'ollama' is the standard dummy key for local LiteLLM setups

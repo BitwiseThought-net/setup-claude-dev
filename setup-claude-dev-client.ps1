@@ -91,6 +91,9 @@ if (-not (Get-Command "code" -ErrorAction SilentlyContinue)) {
 # 3. Install VS Code Extensions
 if (Test-Path $ExtensionFile) {
     Write-Host "[*] Installing VS Code extensions..."
+    # The 'code' CLI is a Node.js wrapper that emits a harmless but noisy DEP0169
+    # deprecation warning (url.parse) on every invocation. Suppress it here.
+    $env:NODE_NO_WARNINGS = "1"
     Get-Content $ExtensionFile | Where-Object { $_ -and $_ -notmatch '^#' } | ForEach-Object {
         Write-Host "Installing: $_"
         & code --install-extension $_ --force
