@@ -3,10 +3,10 @@
 
 # Local Mode: Points to your GPU Server
 claude-local() {
-    export ANTHROPIC_BASE_URL="http://${REMOTE_SERVER_IP}:${REMOTE_SERVER_PORT}"
+    export ANTHROPIC_BASE_URL="${REMOTE_SERVER_URL}"
     export ANTHROPIC_API_KEY="${LOCAL_API_KEY}"
     export ANTHROPIC_MODEL="${LOCAL_MODEL_NAME}"
-    echo "✅ Mode: LOCAL (Server: ${REMOTE_SERVER_IP}:${REMOTE_SERVER_PORT})"
+    echo "✅ Mode: LOCAL (Server: ${REMOTE_SERVER_URL})"
     claude "$@"
 }
 
