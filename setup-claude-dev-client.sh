@@ -27,6 +27,26 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 
 source "$CONFIG_FILE"
+
+# Default REMOTE_SERVER_PROTOCOL to http (matches the typical local LAN Ollama/LiteLLM setup).
+# Set REMOTE_SERVER_PROTOCOL=https in claude.config if your server is behind a TLS-terminated
+# reverse proxy - otherwise you'll see "plain HTTP request was sent to HTTPS port" errors.
+REMOTE_SERVER_PROTOCOL="${REMOTE_SERVER_PROTOCOL:-http}"
+
+# Normalize the URL: omit the port when it's the protocol's default (80 for http, 443 for https),
+# since most servers/clients treat "https://host:443" and "https://host" identically, but some
+# strict reverse-proxy configs are picky about an explicitly-specified default port.
+if { [ "$REMOTE_SERVER_PROTOCOL" = "http" ] && [ "$REMOTE_SERVER_PORT" = "80" ]; } || \
+   { [ "$REMOTE_SERVER_PROTOCOL" = "https" ] && [ "$REMOTE_SERVER_PORT" = "443" ]; }; then
+    REMOTE_SERVER_URL="${REMOTE_SERVER_PROTOCOL}://${REMOTE_SERVER_IP}"
+else
+    REMOTE_SERVER_URL="${REMOTE_SERVER_PROTOCOL}://${REMOTE_SERVER_IP}:${REMOTE_SERVER_PORT}"
+fi
+
+# The 'code' CLI is a Node.js wrapper that emits a harmless but noisy DEP0169
+# deprecation warning (url.parse) on every invocation. Suppress it for this script.
+export NODE_NO_WARNINGS=1
+
 echo "🚀 Starting Full Automation: Claude Dev + VS Code Setup..."
 
 # 2. System Dependencies
@@ -108,6 +128,26 @@ fi
 echo "📦 Installing Claude Code CLI..."
 curl -fsSL https://claude.ai/install.sh | bash
 
+# 6b. Ensure claude CLI's install directory is on PATH
+CLAUDE_BIN_DIR="$HOME/.local/bin"
+BASHRC="$HOME/.bashrc"
+if [ -d "$CLAUDE_BIN_DIR" ]; then
+    PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+    if ! grep -qF "$PATH_LINE" "$BASHRC" 2>/dev/null; then
+        echo "[*] Adding $CLAUDE_BIN_DIR to PATH in $BASHRC..."
+        echo "$PATH_LINE" >> "$BASHRC"
+    else
+        echo "[OK] $CLAUDE_BIN_DIR is already on PATH in $BASHRC."
+    fi
+    # Also patch the current shell so the rest of this script can see it now
+    case ":$PATH:" in
+        *":$CLAUDE_BIN_DIR:"*) ;;
+        *) export PATH="$CLAUDE_BIN_DIR:$PATH" ;;
+    esac
+else
+    echo "[WARN] $CLAUDE_BIN_DIR not found - claude CLI may not have installed to the expected location."
+fi
+
 # 7. Configure Claude CLI JSON
 mkdir -p "$HOME/.claude"
 cat <<EOF > "$HOME/.claude/config.json"
@@ -118,39 +158,66 @@ cat <<EOF > "$HOME/.claude/config.json"
 }
 EOF
 
-cat <<EOF > "$HOME/.claude/settings.json"
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "http://${OLLAMA_HOST}:${OLLAMA_PORT}",
-    "ANTHROPIC_AUTH_TOKEN": "${API_KEY}",
-    "ANTHROPIC_API_KEY": "${API_KEY}",
-    "LITELLM_PROXY_URL": "http://${OLLAMA_HOST}:${OLLAMA_PORT}",
-    "LITELLM_PROXY_API_KEY": "${API_KEY}"
-  },
-  "theme": "auto"
+# Helper: merge a JSON fragment into a file without clobbering unrelated existing keys.
+# Uses jq's recursive merge (*) so nested objects (like "env") merge key-by-key too.
+merge_json_file() {
+    local path="$1"
+    local fragment="$2"
+
+    mkdir -p "$(dirname "$path")"
+
+    local existing="{}"
+    if [ -s "$path" ]; then
+        if ! existing="$(jq '.' "$path" 2>/dev/null)"; then
+            echo "[WARN] $path has invalid JSON. Backing it up to $path.bak and starting fresh."
+            cp "$path" "$path.bak"
+            existing="{}"
+        fi
+    fi
+
+    jq -n --argjson existing "$existing" --argjson fragment "$fragment" '$existing * $fragment' > "${path}.tmp" && mv "${path}.tmp" "$path"
 }
-EOF
+
+# 7b. Configure the actual Claude Code settings.json (the file Claude Code reads for env vars)
+CLAUDE_SETTINGS_PATH="$HOME/.claude/settings.json"
+echo "[*] Configuring $CLAUDE_SETTINGS_PATH..."
+SETTINGS_FRAGMENT=$(jq -n \
+    --arg base_url "$REMOTE_SERVER_URL" \
+    --arg auth_token "$LOCAL_API_KEY" \
+    '{
+        env: {
+            ANTHROPIC_BASE_URL: $base_url,
+            ANTHROPIC_AUTH_TOKEN: $auth_token,
+            LITELLM_PROXY_URL: $base_url,
+            LITELLM_PROXY_API_KEY: $auth_token
+        },
+        theme: "auto"
+    }')
+merge_json_file "$CLAUDE_SETTINGS_PATH" "$SETTINGS_FRAGMENT"
+
+# 7c. Configure VS Code's user settings.json for the Claude Code extension
+VSCODE_SETTINGS_PATH="$HOME/.config/Code/User/settings.json"
+echo "[*] Configuring $VSCODE_SETTINGS_PATH..."
+VSCODE_FRAGMENT=$(jq -n --arg model "$LOCAL_MODEL_NAME" '{
+    "claudeCode.disableLoginPrompt": true,
+    "claudeCode.selectedModel": $model
+}')
+merge_json_file "$VSCODE_SETTINGS_PATH" "$VSCODE_FRAGMENT"
 
 
 # 8. Setup Aliases from Template
 ALIAS_DEST="$HOME/.claude_aliases"
 if [ -f "$TEMPLATE_ALIASES" ]; then
     echo "✍️  Generating $ALIAS_DEST from template..."
-    export REMOTE_SERVER_IP REMOTE_SERVER_PORT LOCAL_API_KEY OFFICIAL_API_KEY LOCAL_MODEL_NAME
+    export REMOTE_SERVER_URL REMOTE_SERVER_IP REMOTE_SERVER_PORT LOCAL_API_KEY OFFICIAL_API_KEY LOCAL_MODEL_NAME
     envsubst < "$TEMPLATE_ALIASES" > "$ALIAS_DEST"
 else
     echo "❌ Error: Template $TEMPLATE_ALIASES not found!"
 fi
 
 # 9. Source in .bashrc
-BASHRC="$HOME/.bashrc"
 if ! grep -qF "source $ALIAS_DEST" "$BASHRC"; then
     echo -e "\n# Custom Claude Aliases\nsource $ALIAS_DEST" >> "$BASHRC"
-fi
-
-TMP_PATH='export PATH="$HOME/.local/bin:$PATH"'
-if ! grep -q "$TMP_PATH" your_file.txt; then
-    echo "$TMP_PATH" >> ~/.bashrc && source ~/.bashrc
 fi
 
 echo "----------------------------------------------------------------------------"
